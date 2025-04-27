@@ -31,13 +31,13 @@
 在使用域名扫描器前，需要安装以下依赖库：在使用域名扫描器前，需要安装以下依赖库：
 
 ```bash
-sudo apt update && sudo apt install python3sudo apt update && sudo apt install python3
+sudo apt update && sudo apt install python3
 ```
 ```bash
-sudo apt install python3-pipsudo apt install python3-pip
+sudo apt install python3-pip
 ```
 ```bash
-pip3 install tqdm requestspip3 install tqdm requests
+pip3 install tqdm requests
 ```
 
 ## 文件结构
