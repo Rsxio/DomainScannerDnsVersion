@@ -69,11 +69,10 @@ def main():
     for tld in args.tlds:
         print(f"\n开始扫描 {tld} 域名...")
         
-        # 生成域名
+        # 生成域名 - 修复参数名称不匹配问题
         domains = generator.generate_domains(
             mode=args.mode,
-            min_length=args.min_length,
-            max_length=args.max_length,
+            length_range=(args.min_length, args.max_length),  # 使用元组作为length_range参数
             tld=tld,
             limit=args.limit
         )
