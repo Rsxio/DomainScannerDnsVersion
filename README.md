@@ -61,7 +61,7 @@ sudo apt install python3-requests
 要扫描未注册的域名，使用`domain_scanner_dns.py`脚本：要扫描未注册的域名，使用`domain_scanner_dns.py`脚本：
 
 ```bash
-python3 domain_scanner_dns.py --mode letters --min-length 2 --max-length 2 --tlds .im .pw --limit 100 --workers 3python3 domain_scanner_dns.py --mode letters --min-length 2 --max-length 2 --tlds .im .pw --limit 100 --workers 3
+python3 domain_scanner_dns.py --mode letters --min-length 2 --max-length 2 --tlds .im .pw --limit 100 --workers 3
 ```
 
 参数说明：
