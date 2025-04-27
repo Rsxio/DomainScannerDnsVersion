@@ -4,6 +4,7 @@
 """
 域名扫描器主程序 (DNS/HTTP版本)
 集成域名生成器和DNS/HTTP域名检查器，用于扫描未注册的域名
+支持.im、.pw、.gs、.com和.de域名，并过滤.de的保留域名
 """
 
 import os
@@ -152,7 +153,7 @@ def main():
     parser.add_argument("--max-length", type=int, default=3,
                         help="域名最大长度 (不包括TLD)")
     
-    parser.add_argument("--tlds", nargs="+", default=[".im", ".pw", ".gs", ".com"],
+    parser.add_argument("--tlds", nargs="+", default=[".im", ".pw", ".gs", ".com", ".de"],
                         help="要扫描的顶级域名列表")
     
     parser.add_argument("--limit", type=int, default=None,

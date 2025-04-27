@@ -18,7 +18,18 @@ class DomainGenerator:
         """初始化域名生成器"""
         self.letters = string.ascii_lowercase  # 小写字母a-z
         self.digits = string.digits  # 数字0-9
-        self.tlds = ['.im', '.pw', '.gs', '.com']  # 支持的顶级域名
+        self.tlds = ['.im', '.pw', '.gs', '.com', '.de']  # 支持的顶级域名
+        
+        # 定义保留域名规则
+        self.reserved_rules = {
+            '.de': {
+                'starts_with_hyphen': True,  # 不能以连字符开头
+                'ends_with_hyphen': True,    # 不能以连字符结尾
+                'hyphen_in_3_4_pos': True,   # 不能在第3和第4位同时有连字符
+                'max_length': 63,            # 最大长度
+                'min_length': 1              # 最小长度
+            }
+        }
     
     def generate_pure_letters(self, length, tld=None):
         """
@@ -38,7 +49,9 @@ class DomainGenerator:
         for combo in itertools.product(self.letters, repeat=length):
             domain_name = ''.join(combo)
             for tld_suffix in tlds_to_use:
-                domains.append(f"{domain_name}{tld_suffix}")
+                domain = f"{domain_name}{tld_suffix}"
+                if self.is_valid_domain(domain):
+                    domains.append(domain)
         
         return domains
     
@@ -60,7 +73,9 @@ class DomainGenerator:
         for combo in itertools.product(self.digits, repeat=length):
             domain_name = ''.join(combo)
             for tld_suffix in tlds_to_use:
-                domains.append(f"{domain_name}{tld_suffix}")
+                domain = f"{domain_name}{tld_suffix}"
+                if self.is_valid_domain(domain):
+                    domains.append(domain)
         
         return domains
     
@@ -83,7 +98,9 @@ class DomainGenerator:
         for combo in itertools.product(chars, repeat=length):
             domain_name = ''.join(combo)
             for tld_suffix in tlds_to_use:
-                domains.append(f"{domain_name}{tld_suffix}")
+                domain = f"{domain_name}{tld_suffix}"
+                if self.is_valid_domain(domain):
+                    domains.append(domain)
         
         return domains
     
@@ -160,6 +177,51 @@ class DomainGenerator:
                 f.write(f"{domain}\n")
         
         print(f"已将 {len(domains)} 个域名保存到 {filename}")
+    
+    def is_valid_domain(self, domain):
+        """
+        检查域名是否有效（不是保留域名）
+        
+        参数:
+            domain (str): 完整域名（包括后缀）
+            
+        返回:
+            bool: 如果域名有效返回True，否则返回False
+        """
+        # 提取TLD
+        tld = None
+        for t in self.tlds:
+            if domain.endswith(t):
+                tld = t
+                break
+        
+        if not tld:
+            return True  # 如果不是我们支持的TLD，默认为有效
+        
+        # 提取域名部分（不包括TLD）
+        domain_name = domain[:-len(tld)]
+        
+        # 检查特定TLD的规则
+        if tld in self.reserved_rules:
+            rules = self.reserved_rules[tld]
+            
+            # 检查长度
+            if len(domain_name) < rules.get('min_length', 1) or len(domain_name) > rules.get('max_length', 63):
+                return False
+            
+            # 检查是否以连字符开头
+            if rules.get('starts_with_hyphen', False) and domain_name.startswith('-'):
+                return False
+            
+            # 检查是否以连字符结尾
+            if rules.get('ends_with_hyphen', False) and domain_name.endswith('-'):
+                return False
+            
+            # 检查第3和第4位是否同时为连字符
+            if rules.get('hyphen_in_3_4_pos', False) and len(domain_name) >= 4 and domain_name[2] == '-' and domain_name[3] == '-':
+                return False
+        
+        return True
 
 
 # 测试代码
@@ -185,3 +247,23 @@ if __name__ == "__main__":
     # 使用通用方法生成域名
     sample_domains = generator.generate_sample('letters', (1, 2), '.pw', 10)
     print("样本域名:", sample_domains)
+    
+    # 测试.de域名生成
+    de_domains = generator.generate_sample('letters', (2, 3), '.de', 10)
+    print(f"生成了 {len(de_domains)} 个.de域名")
+    print("示例:", de_domains)
+    
+    # 测试保留域名过滤
+    test_domains = [
+        "a.de",          # 有效
+        "ab.de",         # 有效
+        "-ab.de",        # 无效，以连字符开头
+        "ab-.de",        # 无效，以连字符结尾
+        "ab--cd.de",     # 有效，连字符不在3-4位置
+        "xy--z.de",      # 无效，连字符在3-4位置
+    ]
+    
+    print("\n测试.de域名保留规则:")
+    for domain in test_domains:
+        valid = generator.is_valid_domain(domain)
+        print(f"{domain}: {'有效' if valid else '无效'}")
