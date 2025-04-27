@@ -106,9 +106,6 @@ python3 domain_scanner_dns.py --mode alphanumeric --min-length 2 --max-length 3 
 3. 所有输出目录会自动创建，无需手动创建文件夹
 4. 默认情况下，结果保存在`results_dns`目录下
 
-## 在GitHub上使用
-
-本代码已经过修改，可以直接上传到GitHub而无需预先创建任何文件夹结构。所有必要的目录会在运行时自动创建。
 
 ## 性能优化
 
