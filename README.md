@@ -37,7 +37,10 @@ sudo apt update && sudo apt install python3
 sudo apt install python3-pip
 ```
 ```bash
-pip3 install tqdm requests
+sudo apt install python3-tqdm
+```
+```bash
+sudo apt install python3-requests
 ```
 
 ## 文件结构
