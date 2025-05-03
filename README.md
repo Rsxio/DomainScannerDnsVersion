@@ -10,8 +10,8 @@
 
 ## 为什么使用DNS/HTTP版本？
 
-与基于WHOIS的域名检查相比，DNS/HTTP版本具有以下优势：与基于WHOIS的域名检查相比，DNS/HTTP版本具有以下优势：
-- **更高的可靠性**：不依赖WHOIS服务器，避免超时和连接问题- **更高的可靠性**：不依赖WHOIS服务器，避免超时和连接问题
+与基于WHOIS的域名检查相比，DNS/HTTP版本具有以下优势：
+- **更高的可靠性**：不依赖WHOIS服务器，避免超时和连接问题
 - **更快的检查速度**：DNS查询通常比WHOIS查询更快
 - **没有查询限制**：WHOIS服务器通常会限制查询频率，而DNS查询基本没有限制
 - **更简单的实现**：不需要处理不同TLD的WHOIS响应格式差异
@@ -45,10 +45,10 @@ sudo apt install python3-requests
 
 ## 文件结构
 
-- `domain_generator.py`: 域名生成器模块- `domain_generator.py`: 域名生成器模块
-- `domain_checker_dns.py`: DNS/HTTP域名可用性检查模块- `domain_checker_dns.py`: DNS/HTTP域名可用性检查模块
-- `domain_scanner_dns.py`: 主程序，集成域名生成和检查功能- `domain_scanner_dns.py`: 主程序，集成域名生成和检查功能
-- `test_scanner_dns.py`: 测试脚本- `test_scanner_dns.py`: 测试脚本
+- `domain_generator.py`: 域名生成器模块
+- `domain_checker_dns.py`: DNS/HTTP域名可用性检查模块
+- `domain_scanner_dns.py`: 主程序，集成域名生成和检查功能
+- `test_scanner_dns.py`: 测试脚本
 
 ## 使用方法
 
@@ -65,10 +65,9 @@ python3 domain_scanner_dns.py --mode letters --min-length 2 --max-length 2 --tld
 ```
 
 参数说明：
-- `--mode`: 域名生成模式，可选值为`letters`(纯字母)、`digits`(纯数字)、`alphanumeric`(字母数字混合)- `--mode`: 域名生成模式，可选值为`letters`(纯字母)、`digits`(纯数字)、`alphanumeric`(字母数字混合)
-- `--min-length`: 域名最小长度(不包括TLD)- `--min-length`: 域名最小长度(不包括TLD)
-- `--max-length`: 域名最大长度(不包括TLD)- `--max-length`: 域名最大长度(不包括TLD)
-- `--tlds`: 要扫描的顶级域名列表
+- `--mode`: 域名生成模式，可选值为`letters`(纯字母)、`digits`(纯数字)、`alphanumeric`(字母数字混合)
+- `--min-length`: 域名最小长度(不包括TLD)
+- `--max-length`: 域名最大长度(不包括TLD)
 - `--limit`: 限制每个TLD生成的域名数量
 - `--workers`: 并发工作线程数
 - `--delay-min`: 查询延迟最小值(秒)
