@@ -37,13 +37,14 @@ class DomainGenerator:
             }
         }
     
-    def generate_pure_letters(self, length, tld=None):
+    def generate_pure_letters(self, length, tld=None, start_chars=None):
         """
         生成纯字母域名
         
         参数:
             length (int): 域名长度（不包括TLD）
             tld (str): 指定的顶级域名，如果为None则使用所有支持的TLD
+            start_chars (str): 指定的首字母，如果为None则不限制首字母
             
         返回:
             list: 生成的域名列表
@@ -51,23 +52,37 @@ class DomainGenerator:
         domains = []
         tlds_to_use = [tld] if tld else self.tlds
         
+        # 如果指定了首字母，则只使用这些字母作为第一个字符
+        first_chars = start_chars if start_chars else self.letters
+        
         # 生成所有可能的字母组合
-        for combo in itertools.product(self.letters, repeat=length):
-            domain_name = ''.join(combo)
-            for tld_suffix in tlds_to_use:
-                domain = f"{domain_name}{tld_suffix}"
-                if self.is_valid_domain(domain):
-                    domains.append(domain)
+        if length == 1:
+            # 如果长度为1，直接使用首字母列表
+            for first_char in first_chars:
+                for tld_suffix in tlds_to_use:
+                    domain = f"{first_char}{tld_suffix}"
+                    if self.is_valid_domain(domain):
+                        domains.append(domain)
+        else:
+            # 如果长度大于1，第一个字符使用首字母列表，其余字符使用所有字母
+            for first_char in first_chars:
+                for combo in itertools.product(self.letters, repeat=length-1):
+                    domain_name = first_char + ''.join(combo)
+                    for tld_suffix in tlds_to_use:
+                        domain = f"{domain_name}{tld_suffix}"
+                        if self.is_valid_domain(domain):
+                            domains.append(domain)
         
         return domains
     
-    def generate_pure_digits(self, length, tld=None):
+    def generate_pure_digits(self, length, tld=None, start_chars=None):
         """
         生成纯数字域名
         
         参数:
             length (int): 域名长度（不包括TLD）
             tld (str): 指定的顶级域名，如果为None则使用所有支持的TLD
+            start_chars (str): 指定的首字符，如果为None则不限制首字符
             
         返回:
             list: 生成的域名列表
@@ -75,23 +90,39 @@ class DomainGenerator:
         domains = []
         tlds_to_use = [tld] if tld else self.tlds
         
+        # 如果指定了首字符，则只使用这些字符作为第一个字符
+        # 过滤出数字字符
+        valid_start_chars = ''.join([c for c in (start_chars or '') if c in self.digits])
+        first_chars = valid_start_chars if valid_start_chars else self.digits
+        
         # 生成所有可能的数字组合
-        for combo in itertools.product(self.digits, repeat=length):
-            domain_name = ''.join(combo)
-            for tld_suffix in tlds_to_use:
-                domain = f"{domain_name}{tld_suffix}"
-                if self.is_valid_domain(domain):
-                    domains.append(domain)
+        if length == 1:
+            # 如果长度为1，直接使用首字符列表
+            for first_char in first_chars:
+                for tld_suffix in tlds_to_use:
+                    domain = f"{first_char}{tld_suffix}"
+                    if self.is_valid_domain(domain):
+                        domains.append(domain)
+        else:
+            # 如果长度大于1，第一个字符使用首字符列表，其余字符使用所有数字
+            for first_char in first_chars:
+                for combo in itertools.product(self.digits, repeat=length-1):
+                    domain_name = first_char + ''.join(combo)
+                    for tld_suffix in tlds_to_use:
+                        domain = f"{domain_name}{tld_suffix}"
+                        if self.is_valid_domain(domain):
+                            domains.append(domain)
         
         return domains
     
-    def generate_alphanumeric(self, length, tld=None):
+    def generate_alphanumeric(self, length, tld=None, start_chars=None):
         """
         生成字母数字混合域名
         
         参数:
             length (int): 域名长度（不包括TLD）
             tld (str): 指定的顶级域名，如果为None则使用所有支持的TLD
+            start_chars (str): 指定的首字符，如果为None则不限制首字符
             
         返回:
             list: 生成的域名列表
@@ -100,17 +131,32 @@ class DomainGenerator:
         tlds_to_use = [tld] if tld else self.tlds
         chars = self.letters + self.digits
         
+        # 如果指定了首字符，则只使用这些字符作为第一个字符
+        # 过滤出有效的字母和数字字符
+        valid_start_chars = ''.join([c for c in (start_chars or '') if c in chars])
+        first_chars = valid_start_chars if valid_start_chars else chars
+        
         # 生成所有可能的字母数字组合
-        for combo in itertools.product(chars, repeat=length):
-            domain_name = ''.join(combo)
-            for tld_suffix in tlds_to_use:
-                domain = f"{domain_name}{tld_suffix}"
-                if self.is_valid_domain(domain):
-                    domains.append(domain)
+        if length == 1:
+            # 如果长度为1，直接使用首字符列表
+            for first_char in first_chars:
+                for tld_suffix in tlds_to_use:
+                    domain = f"{first_char}{tld_suffix}"
+                    if self.is_valid_domain(domain):
+                        domains.append(domain)
+        else:
+            # 如果长度大于1，第一个字符使用首字符列表，其余字符使用所有字母和数字
+            for first_char in first_chars:
+                for combo in itertools.product(chars, repeat=length-1):
+                    domain_name = first_char + ''.join(combo)
+                    for tld_suffix in tlds_to_use:
+                        domain = f"{domain_name}{tld_suffix}"
+                        if self.is_valid_domain(domain):
+                            domains.append(domain)
         
         return domains
     
-    def generate_domains(self, mode, length_range, tld=None, limit=None, shuffle=True):
+    def generate_domains(self, mode, length_range, tld=None, limit=None, shuffle=True, start_chars=None):
         """
         根据指定模式生成域名
         
@@ -120,6 +166,7 @@ class DomainGenerator:
             tld (str): 指定的顶级域名，如果为None则使用所有支持的TLD
             limit (int): 限制生成的域名数量，如果为None则生成所有可能组合
             shuffle (bool): 是否打乱生成的域名顺序
+            start_chars (str): 指定的首字符，如果为None则不限制首字符
             
         返回:
             list: 生成的域名列表
@@ -130,11 +177,11 @@ class DomainGenerator:
         # 对每个长度生成域名
         for length in range(min_length, max_length + 1):
             if mode == 'letters':
-                domains.extend(self.generate_pure_letters(length, tld))
+                domains.extend(self.generate_pure_letters(length, tld, start_chars))
             elif mode == 'digits':
-                domains.extend(self.generate_pure_digits(length, tld))
+                domains.extend(self.generate_pure_digits(length, tld, start_chars))
             elif mode == 'alphanumeric':
-                domains.extend(self.generate_alphanumeric(length, tld))
+                domains.extend(self.generate_alphanumeric(length, tld, start_chars))
             else:
                 raise ValueError(f"不支持的生成模式: {mode}")
         
@@ -148,7 +195,7 @@ class DomainGenerator:
         
         return domains
     
-    def generate_sample(self, mode, length_range, tld=None, sample_size=100):
+    def generate_sample(self, mode, length_range, tld=None, sample_size=100, start_chars=None):
         """
         生成指定数量的样本域名
         
@@ -157,11 +204,12 @@ class DomainGenerator:
             length_range (tuple): 域名长度范围，如 (2, 3) 表示生成2-3个字符的域名
             tld (str): 指定的顶级域名，如果为None则使用所有支持的TLD
             sample_size (int): 样本大小
+            start_chars (str): 指定的首字符，如果为None则不限制首字符
             
         返回:
             list: 生成的域名样本列表
         """
-        all_domains = self.generate_domains(mode, length_range, tld, limit=None, shuffle=True)
+        all_domains = self.generate_domains(mode, length_range, tld, limit=None, shuffle=True, start_chars=start_chars)
         
         # 如果生成的域名数量少于样本大小，返回所有域名
         if len(all_domains) <= sample_size:
@@ -263,6 +311,16 @@ if __name__ == "__main__":
     ml_domains = generator.generate_sample('letters', (3, 4), '.ml', 10)
     print(f"生成了 {len(ml_domains)} 个.ml域名")
     print("示例:", ml_domains)
+    
+    # 测试指定首字母的域名生成
+    s_domains = generator.generate_sample('letters', (3, 3), '.ml', 10, start_chars='s')
+    print(f"生成了 {len(s_domains)} 个以's'开头的.ml域名")
+    print("示例:", s_domains)
+    
+    # 测试指定多个首字母的域名生成
+    ab_domains = generator.generate_sample('letters', (3, 3), '.ml', 10, start_chars='ab')
+    print(f"生成了 {len(ab_domains)} 个以'a'或'b'开头的.ml域名")
+    print("示例:", ab_domains)
     
     # 测试保留域名过滤
     test_domains = [

@@ -5,6 +5,7 @@
 域名扫描器主程序 (DNS/HTTP版本)
 集成域名生成器和DNS/HTTP域名检查器，用于扫描未注册的域名
 支持.im、.pw、.gs、.com、.de和.ml域名，并过滤保留域名
+支持指定首字母，只扫描特定首字母开头的域名
 """
 
 import os
@@ -53,6 +54,7 @@ class DomainScannerDNS:
             'save': '💾',
             'complete': '🎉',
             'time': '⏱️',
+            'filter': '🔤',
             'tld': {
                 'im': '📱',
                 'pw': '🔐',
@@ -78,7 +80,7 @@ class DomainScannerDNS:
         
         return self.emojis.get(key, '') + ' '
     
-    def scan(self, mode, length_range, tlds=None, limit=None, checkpoint_size=50):
+    def scan(self, mode, length_range, tlds=None, limit=None, checkpoint_size=50, start_chars=None):
         """
         扫描未注册的域名
         
@@ -88,6 +90,7 @@ class DomainScannerDNS:
             tlds (list): 要扫描的顶级域名列表，如果为None则使用所有支持的TLD
             limit (int): 限制生成的域名数量
             checkpoint_size (int): 每次检查的域名数量，用于分批处理
+            start_chars (str): 指定的首字母，如果为None则不限制首字母
             
         返回:
             dict: 包含可用域名的字典，按TLD分类
@@ -98,14 +101,23 @@ class DomainScannerDNS:
         # 创建结果字典
         results = {tld.replace('.', ''): [] for tld in tlds_to_use}
         
+        # 显示首字母过滤信息
+        if start_chars:
+            print(f"{self._emoji('filter')}首字母过滤: 只扫描以 '{start_chars}' 开头的域名")
+        
         # 为每个TLD生成并检查域名
         for tld in tlds_to_use:
             print(f"\n{self._emoji('start')}开始扫描 {self._emoji(tld)}{tld} 域名...")
             
             # 生成域名
-            domains = self.generator.generate_domains(mode, length_range, tld, limit)
+            domains = self.generator.generate_domains(mode, length_range, tld, limit, start_chars=start_chars)
             total_domains = len(domains)
-            print(f"{self._emoji('generate')}生成了 {total_domains} 个 {self._emoji(tld)}{tld} 域名")
+            
+            # 显示生成信息，包括首字母过滤
+            if start_chars:
+                print(f"{self._emoji('generate')}生成了 {total_domains} 个以 '{start_chars}' 开头的 {self._emoji(tld)}{tld} 域名")
+            else:
+                print(f"{self._emoji('generate')}生成了 {total_domains} 个 {self._emoji(tld)}{tld} 域名")
             
             # 分批检查域名
             available_domains = []
@@ -118,38 +130,46 @@ class DomainScannerDNS:
                 available_domains.extend(check_results['available'])
                 
                 # 保存检查点
-                self._save_checkpoint(available_domains, tld, mode, length_range)
+                self._save_checkpoint(available_domains, tld, mode, length_range, start_chars)
                 
                 # 保存错误域名，以便后续重试
                 if check_results['error']:
-                    self._save_error_domains(check_results['error'], tld, mode, length_range)
+                    self._save_error_domains(check_results['error'], tld, mode, length_range, start_chars)
             
             # 将结果添加到结果字典
             results[tld.replace('.', '')] = available_domains
             
             # 保存最终结果
-            self._save_results(available_domains, tld, mode, length_range)
+            self._save_results(available_domains, tld, mode, length_range, start_chars)
         
         return results
     
-    def _save_checkpoint(self, domains, tld, mode, length_range):
+    def _get_filename_suffix(self, start_chars):
+        """获取文件名后缀，用于标识首字母过滤"""
+        if start_chars:
+            return f"_start_{start_chars}"
+        return ""
+    
+    def _save_checkpoint(self, domains, tld, mode, length_range, start_chars=None):
         """保存检查点"""
         min_len, max_len = length_range
+        suffix = self._get_filename_suffix(start_chars)
         checkpoint_file = os.path.join(
             self.results_dir, 
-            f"checkpoint_{tld.replace('.', '')}_{mode}_{min_len}-{max_len}.txt"
+            f"checkpoint_{tld.replace('.', '')}_{mode}_{min_len}-{max_len}{suffix}.txt"
         )
         
         with open(checkpoint_file, 'w') as f:
             for domain in domains:
                 f.write(f"{domain}\n")
     
-    def _save_error_domains(self, domains, tld, mode, length_range):
+    def _save_error_domains(self, domains, tld, mode, length_range, start_chars=None):
         """保存检查出错的域名"""
         min_len, max_len = length_range
+        suffix = self._get_filename_suffix(start_chars)
         error_file = os.path.join(
             self.results_dir, 
-            f"error_{tld.replace('.', '')}_{mode}_{min_len}-{max_len}.txt"
+            f"error_{tld.replace('.', '')}_{mode}_{min_len}-{max_len}{suffix}.txt"
         )
         
         with open(error_file, 'w') as f:
@@ -158,13 +178,14 @@ class DomainScannerDNS:
         
         print(f"{self._emoji('error')}已将 {len(domains)} 个检查出错的 {self._emoji(tld)}{tld} 域名保存到 {error_file}")
     
-    def _save_results(self, domains, tld, mode, length_range):
+    def _save_results(self, domains, tld, mode, length_range, start_chars=None):
         """保存最终结果"""
         min_len, max_len = length_range
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suffix = self._get_filename_suffix(start_chars)
         result_file = os.path.join(
             self.results_dir, 
-            f"available_{tld.replace('.', '')}_{mode}_{min_len}-{max_len}_{timestamp}.txt"
+            f"available_{tld.replace('.', '')}_{mode}_{min_len}-{max_len}{suffix}_{timestamp}.txt"
         )
         
         with open(result_file, 'w') as f:
@@ -218,6 +239,9 @@ def main():
     parser.add_argument("--no-emoji", action="store_true",
                         help="不使用emoji表情符号")
     
+    parser.add_argument("--start-chars", type=str, default=None,
+                        help="指定域名的首字母，例如 's' 表示只扫描以s开头的域名，'abc' 表示只扫描以a、b或c开头的域名")
+    
     args = parser.parse_args()
     
     # 创建域名扫描器
@@ -234,9 +258,14 @@ def main():
     emoji_start = scanner._emoji('start')
     emoji_time = scanner._emoji('time')
     emoji_complete = scanner._emoji('complete')
+    emoji_filter = scanner._emoji('filter')
     
     print(f"{emoji_start}开始扫描模式为 '{args.mode}' 的域名，长度范围: {args.min_length}-{args.max_length}")
     print(f"扫描的TLD: {', '.join([f'{scanner._emoji(tld)}{tld}' for tld in args.tlds])}")
+    
+    if args.start_chars:
+        print(f"{emoji_filter}首字母过滤: 只扫描以 '{args.start_chars}' 开头的域名")
+    
     print(f"结果将保存到: {args.results_dir}")
     print(f"DNS/HTTP查询设置: 超时={args.timeout}秒, 重试次数={args.retries}, 并发线程数={args.workers}")
     
@@ -246,7 +275,8 @@ def main():
         length_range=(args.min_length, args.max_length),
         tlds=args.tlds,
         limit=args.limit,
-        checkpoint_size=args.checkpoint_size
+        checkpoint_size=args.checkpoint_size,
+        start_chars=args.start_chars
     )
     end_time = time.time()
     
@@ -258,7 +288,11 @@ def main():
         tld_with_dot = f".{tld}"
         emoji_tld = scanner._emoji(tld_with_dot)
         emoji_available = scanner._emoji('available')
-        print(f"{emoji_available}找到 {len(domains)} 个可用的 {emoji_tld}.{tld} 域名")
+        
+        if args.start_chars:
+            print(f"{emoji_available}找到 {len(domains)} 个以 '{args.start_chars}' 开头的可用 {emoji_tld}.{tld} 域名")
+        else:
+            print(f"{emoji_available}找到 {len(domains)} 个可用的 {emoji_tld}.{tld} 域名")
 
 
 if __name__ == "__main__":
