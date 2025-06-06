@@ -18,7 +18,7 @@ class DomainGenerator:
         """初始化域名生成器"""
         self.letters = string.ascii_lowercase  # 小写字母a-z
         self.digits = string.digits  # 数字0-9
-        self.tlds = ['.im', '.pw', '.gs', '.com', '.de']  # 支持的顶级域名
+        self.tlds = ['.im', '.pw', '.gs', '.com', '.de', '.ml']  # 支持的顶级域名
         
         # 定义保留域名规则
         self.reserved_rules = {
@@ -28,6 +28,12 @@ class DomainGenerator:
                 'hyphen_in_3_4_pos': True,   # 不能在第3和第4位同时有连字符
                 'max_length': 63,            # 最大长度
                 'min_length': 1              # 最小长度
+            },
+            '.ml': {
+                'starts_with_hyphen': True,  # 不能以连字符开头
+                'ends_with_hyphen': True,    # 不能以连字符结尾
+                'max_length': 63,            # 最大长度
+                'min_length': 3              # 最小长度
             }
         }
     
@@ -253,6 +259,11 @@ if __name__ == "__main__":
     print(f"生成了 {len(de_domains)} 个.de域名")
     print("示例:", de_domains)
     
+    # 测试.ml域名生成
+    ml_domains = generator.generate_sample('letters', (3, 4), '.ml', 10)
+    print(f"生成了 {len(ml_domains)} 个.ml域名")
+    print("示例:", ml_domains)
+    
     # 测试保留域名过滤
     test_domains = [
         "a.de",          # 有效
@@ -261,9 +272,14 @@ if __name__ == "__main__":
         "ab-.de",        # 无效，以连字符结尾
         "ab--cd.de",     # 有效，连字符不在3-4位置
         "xy--z.de",      # 无效，连字符在3-4位置
+        "ab.ml",         # 无效，长度小于3
+        "abc.ml",        # 有效
+        "-abc.ml",       # 无效，以连字符开头
+        "abc-.ml",       # 无效，以连字符结尾
     ]
     
-    print("\n测试.de域名保留规则:")
+    print("\n测试域名保留规则:")
     for domain in test_domains:
         valid = generator.is_valid_domain(domain)
         print(f"{domain}: {'有效' if valid else '无效'}")
+

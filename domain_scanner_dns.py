@@ -4,7 +4,7 @@
 """
 域名扫描器主程序 (DNS/HTTP版本)
 集成域名生成器和DNS/HTTP域名检查器，用于扫描未注册的域名
-支持.im、.pw、.gs、.com和.de域名，并过滤.de的保留域名
+支持.im、.pw、.gs、.com、.de和.ml域名，并过滤保留域名
 """
 
 import os
@@ -19,7 +19,7 @@ from domain_checker_dns import DomainCheckerDNS
 class DomainScannerDNS:
     """域名扫描器类 (DNS/HTTP版本)"""
     
-    def __init__(self, max_workers=3, query_delay=(2, 5), timeout=5, retries=2, results_dir="results_dns"):
+    def __init__(self, max_workers=3, query_delay=(2, 5), timeout=5, retries=2, results_dir="results_dns", use_emoji=True):
         """
         初始化域名扫描器
         
@@ -29,19 +29,54 @@ class DomainScannerDNS:
             timeout (int): DNS/HTTP查询超时时间（秒）
             retries (int): 查询失败时的重试次数
             results_dir (str): 结果保存目录
+            use_emoji (bool): 是否在输出中使用emoji
         """
         self.generator = DomainGenerator()
         self.checker = DomainCheckerDNS(
             max_workers=max_workers, 
             query_delay=query_delay,
             timeout=timeout,
-            retries=retries
+            retries=retries,
+            use_emoji=use_emoji
         )
         self.results_dir = results_dir
+        self.use_emoji = use_emoji
+        
+        # emoji字典
+        self.emojis = {
+            'start': '🚀',
+            'generate': '⚙️',
+            'check': '🔍',
+            'available': '✅',
+            'unavailable': '❌',
+            'error': '⚠️',
+            'save': '💾',
+            'complete': '🎉',
+            'time': '⏱️',
+            'tld': {
+                'im': '📱',
+                'pw': '🔐',
+                'gs': '🌐',
+                'com': '🏢',
+                'de': '🇩🇪',
+                'ml': '🇲🇱'
+            }
+        }
         
         # 确保结果目录存在
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
+    
+    def _emoji(self, key):
+        """获取emoji，如果不使用emoji则返回空字符串"""
+        if not self.use_emoji:
+            return ''
+        
+        if isinstance(key, str) and key.startswith('.'):
+            tld = key[1:]  # 去掉点
+            return self.emojis['tld'].get(tld, '') + ' '
+        
+        return self.emojis.get(key, '') + ' '
     
     def scan(self, mode, length_range, tlds=None, limit=None, checkpoint_size=50):
         """
@@ -65,18 +100,18 @@ class DomainScannerDNS:
         
         # 为每个TLD生成并检查域名
         for tld in tlds_to_use:
-            print(f"\n开始扫描 {tld} 域名...")
+            print(f"\n{self._emoji('start')}开始扫描 {self._emoji(tld)}{tld} 域名...")
             
             # 生成域名
             domains = self.generator.generate_domains(mode, length_range, tld, limit)
             total_domains = len(domains)
-            print(f"生成了 {total_domains} 个 {tld} 域名")
+            print(f"{self._emoji('generate')}生成了 {total_domains} 个 {self._emoji(tld)}{tld} 域名")
             
             # 分批检查域名
             available_domains = []
             for i in range(0, total_domains, checkpoint_size):
                 batch = domains[i:i+checkpoint_size]
-                print(f"检查第 {i+1}-{min(i+checkpoint_size, total_domains)} 个域名 (共 {total_domains} 个)")
+                print(f"{self._emoji('check')}检查第 {i+1}-{min(i+checkpoint_size, total_domains)} 个域名 (共 {total_domains} 个)")
                 
                 # 检查当前批次的域名
                 check_results = self.checker.check_domains(batch)
@@ -121,7 +156,7 @@ class DomainScannerDNS:
             for domain in domains:
                 f.write(f"{domain}\n")
         
-        print(f"已将 {len(domains)} 个检查出错的 {tld} 域名保存到 {error_file}")
+        print(f"{self._emoji('error')}已将 {len(domains)} 个检查出错的 {self._emoji(tld)}{tld} 域名保存到 {error_file}")
     
     def _save_results(self, domains, tld, mode, length_range):
         """保存最终结果"""
@@ -136,7 +171,7 @@ class DomainScannerDNS:
             for domain in domains:
                 f.write(f"{domain}\n")
         
-        print(f"已将 {len(domains)} 个可用的 {tld} 域名保存到 {result_file}")
+        print(f"{self._emoji('save')}已将 {len(domains)} 个可用的 {self._emoji(tld)}{tld} 域名保存到 {result_file}")
 
 
 def main():
@@ -153,7 +188,7 @@ def main():
     parser.add_argument("--max-length", type=int, default=3,
                         help="域名最大长度 (不包括TLD)")
     
-    parser.add_argument("--tlds", nargs="+", default=[".im", ".pw", ".gs", ".com", ".de"],
+    parser.add_argument("--tlds", nargs="+", default=[".im", ".pw", ".gs", ".com", ".de", ".ml"],
                         help="要扫描的顶级域名列表")
     
     parser.add_argument("--limit", type=int, default=None,
@@ -180,6 +215,9 @@ def main():
     parser.add_argument("--results-dir", default="results_dns",
                         help="结果保存目录")
     
+    parser.add_argument("--no-emoji", action="store_true",
+                        help="不使用emoji表情符号")
+    
     args = parser.parse_args()
     
     # 创建域名扫描器
@@ -188,12 +226,17 @@ def main():
         query_delay=(args.delay_min, args.delay_max),
         timeout=args.timeout,
         retries=args.retries,
-        results_dir=args.results_dir
+        results_dir=args.results_dir,
+        use_emoji=not args.no_emoji
     )
     
     # 开始扫描
-    print(f"开始扫描模式为 '{args.mode}' 的域名，长度范围: {args.min_length}-{args.max_length}")
-    print(f"扫描的TLD: {', '.join(args.tlds)}")
+    emoji_start = scanner._emoji('start')
+    emoji_time = scanner._emoji('time')
+    emoji_complete = scanner._emoji('complete')
+    
+    print(f"{emoji_start}开始扫描模式为 '{args.mode}' 的域名，长度范围: {args.min_length}-{args.max_length}")
+    print(f"扫描的TLD: {', '.join([f'{scanner._emoji(tld)}{tld}' for tld in args.tlds])}")
     print(f"结果将保存到: {args.results_dir}")
     print(f"DNS/HTTP查询设置: 超时={args.timeout}秒, 重试次数={args.retries}, 并发线程数={args.workers}")
     
@@ -208,12 +251,16 @@ def main():
     end_time = time.time()
     
     # 打印结果摘要
-    print("\n扫描完成!")
-    print(f"总耗时: {end_time - start_time:.2f} 秒")
+    print(f"\n{emoji_complete}扫描完成!")
+    print(f"{emoji_time}总耗时: {end_time - start_time:.2f} 秒")
     
     for tld, domains in results.items():
-        print(f"找到 {len(domains)} 个可用的 .{tld} 域名")
+        tld_with_dot = f".{tld}"
+        emoji_tld = scanner._emoji(tld_with_dot)
+        emoji_available = scanner._emoji('available')
+        print(f"{emoji_available}找到 {len(domains)} 个可用的 {emoji_tld}.{tld} 域名")
 
 
 if __name__ == "__main__":
     main()
+

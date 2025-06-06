@@ -23,7 +23,7 @@ logger = logging.getLogger('domain_checker_dns')
 class DomainCheckerDNS:
     """域名可用性检查类 (DNS/HTTP方法)"""
     
-    def __init__(self, max_workers=3, query_delay=(2, 5), timeout=5, retries=2):
+    def __init__(self, max_workers=3, query_delay=(2, 5), timeout=5, retries=2, use_emoji=True):
         """
         初始化域名检查器
         
@@ -32,14 +32,26 @@ class DomainCheckerDNS:
             query_delay (tuple): 查询间隔时间范围(最小值, 最大值)，单位为秒
             timeout (int): DNS/HTTP查询超时时间（秒）
             retries (int): 查询失败时的重试次数
+            use_emoji (bool): 是否在日志输出中使用emoji
         """
         self.max_workers = max_workers
         self.query_delay = query_delay
         self.timeout = timeout
         self.retries = retries
+        self.use_emoji = use_emoji
         self.available_domains = []
         self.unavailable_domains = []
         self.error_domains = []
+        
+        # emoji字典
+        self.emojis = {
+            'check': '🔍',
+            'available': '✅',
+            'unavailable': '❌',
+            'error': '⚠️',
+            'retry': '🔄',
+            'complete': '🎉'
+        }
         
         # 设置socket默认超时时间
         socket.setdefaulttimeout(self.timeout)
@@ -49,8 +61,14 @@ class DomainCheckerDNS:
             import requests
             self.requests_available = True
         except ImportError:
-            logger.warning("requests库未安装，将只使用DNS方法检查域名")
+            logger.warning(f"{self._emoji('error')}requests库未安装，将只使用DNS方法检查域名")
             self.requests_available = False
+    
+    def _emoji(self, key):
+        """获取emoji，如果不使用emoji则返回空字符串"""
+        if not self.use_emoji:
+            return ''
+        return self.emojis.get(key, '') + ' '
     
     def is_available(self, domain):
         """
@@ -83,12 +101,12 @@ class DomainCheckerDNS:
                 
             except Exception as e:
                 if attempt < self.retries - 1:
-                    logger.warning(f"检查域名 {domain} 时出错: {str(e)}，正在重试 ({attempt+1}/{self.retries})...")
+                    logger.warning(f"{self._emoji('retry')}检查域名 {domain} 时出错: {str(e)}，正在重试 ({attempt+1}/{self.retries})...")
                     # 增加延迟时间，避免频繁重试
                     time.sleep(delay * 2)
                     continue
                 else:
-                    logger.error(f"检查域名 {domain} 失败: {str(e)}")
+                    logger.error(f"{self._emoji('error')}检查域名 {domain} 失败: {str(e)}")
                     return None
     
     def check_domains(self, domains, show_progress=True):
@@ -111,7 +129,7 @@ class DomainCheckerDNS:
             if show_progress:
                 results = list(tqdm(executor.map(self.is_available, domains), 
                                    total=len(domains), 
-                                   desc="检查域名"))
+                                   desc=f"{self._emoji('check')}检查域名"))
             else:
                 results = list(executor.map(self.is_available, domains))
         
@@ -125,10 +143,10 @@ class DomainCheckerDNS:
                 self.error_domains.append(domain)
         
         # 打印结果摘要
-        logger.info(f"检查完成: 共 {len(domains)} 个域名")
-        logger.info(f"- 可用域名: {len(self.available_domains)} 个")
-        logger.info(f"- 已注册域名: {len(self.unavailable_domains)} 个")
-        logger.info(f"- 检查出错: {len(self.error_domains)} 个")
+        logger.info(f"{self._emoji('complete')}检查完成: 共 {len(domains)} 个域名")
+        logger.info(f"{self._emoji('available')}可用域名: {len(self.available_domains)} 个")
+        logger.info(f"{self._emoji('unavailable')}已注册域名: {len(self.unavailable_domains)} 个")
+        logger.info(f"{self._emoji('error')}检查出错: {len(self.error_domains)} 个")
         
         return {
             'available': self.available_domains,
@@ -147,7 +165,7 @@ class DomainCheckerDNS:
             for domain in self.available_domains:
                 f.write(f"{domain}\n")
         
-        logger.info(f"已将 {len(self.available_domains)} 个可用域名保存到 {filename}")
+        logger.info(f"{self._emoji('available')}已将 {len(self.available_domains)} 个可用域名保存到 {filename}")
 
     def check_domain_dns(self, domain):
         """
@@ -164,15 +182,15 @@ class DomainCheckerDNS:
             # 尝试解析域名
             socket.gethostbyname(domain)
             # 如果能解析，说明域名已注册
-            logger.debug(f"DNS查询结果: {domain} 已注册")
+            logger.debug(f"{self._emoji('unavailable')}DNS查询结果: {domain} 已注册")
             return False
         except socket.gaierror:
             # 无法解析，可能未注册
-            logger.debug(f"DNS查询结果: {domain} 可能未注册")
+            logger.debug(f"{self._emoji('available')}DNS查询结果: {domain} 可能未注册")
             return True
         except Exception as e:
             # 其他错误
-            logger.error(f"DNS查询出错: {domain}, 错误: {str(e)}")
+            logger.error(f"{self._emoji('error')}DNS查询出错: {domain}, 错误: {str(e)}")
             return None
 
     def check_domain_http(self, domain):
@@ -194,15 +212,15 @@ class DomainCheckerDNS:
             # 设置较短的超时时间
             response = requests.head(f"http://{domain}", timeout=self.timeout)
             # 如果能访问，说明域名已注册
-            logger.debug(f"HTTP请求结果: {domain} 已注册")
+            logger.debug(f"{self._emoji('unavailable')}HTTP请求结果: {domain} 已注册")
             return False
         except requests.exceptions.ConnectionError:
             # 连接错误，可能未注册
-            logger.debug(f"HTTP请求结果: {domain} 可能未注册")
+            logger.debug(f"{self._emoji('available')}HTTP请求结果: {domain} 可能未注册")
             return True
         except Exception as e:
             # 其他错误，返回None表示无法确定
-            logger.debug(f"HTTP请求出错: {domain}, 错误: {str(e)}")
+            logger.debug(f"{self._emoji('error')}HTTP请求出错: {domain}, 错误: {str(e)}")
             return None
 
 
@@ -216,21 +234,23 @@ if __name__ == "__main__":
         "example.com",
         "thisisaprobablynotregistered123456789.com",
         "google.com",
-        "test123.im"
+        "test123.im",
+        "test123.ml"
     ]
     
     # 检查域名
     results = checker.check_domains(test_domains)
     
     # 打印结果
-    print("\n可用域名:")
+    print(f"\n{checker._emoji('available')}可用域名:")
     for domain in results['available']:
         print(f"- {domain}")
     
-    print("\n已注册域名:")
+    print(f"\n{checker._emoji('unavailable')}已注册域名:")
     for domain in results['unavailable']:
         print(f"- {domain}")
     
-    print("\n检查出错的域名:")
+    print(f"\n{checker._emoji('error')}检查出错的域名:")
     for domain in results['error']:
         print(f"- {domain}")
+
